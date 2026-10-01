@@ -196,7 +196,7 @@ What would need to change next, at tens of millions of rows or many people refre
 
 The stretch item chosen is **real-time**: operators see new requests appear and statuses change
 without refreshing; clients see their own requests update (for example, a toast when a delivery
-arrives). A **Live** dot in the top bar shows the connection state.
+arrives). If the connection drops, a small "Reconnecting…" notice appears in the top bar until it's back.
 
 - **Server-Sent Events** (`GET /events`): one-way, plain HTTP, reconnects on its own, which is all
   a "the server tells the browser something changed" feature needs.
