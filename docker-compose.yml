@@ -6,7 +6,8 @@ services:
       POSTGRES_PASSWORD: desk
       POSTGRES_DB: desk
     ports:
-      - "5432:5432"
+      # 5433 on the host so it does not clash with a locally installed Postgres.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,13 +20,18 @@ services:
     build: .
     environment:
       DATABASE_URL: postgresql+psycopg://desk:desk@db:5432/desk
-      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-in-production}
       CORS_ORIGINS: '["http://localhost:3000"]'
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   frontend:
     build:
@@ -38,7 +44,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:

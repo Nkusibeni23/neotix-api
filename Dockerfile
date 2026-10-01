@@ -9,4 +9,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 COPY . .
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Our middleware writes one structured line per request, so uvicorn's own access log is off.
+CMD ["./scripts/start.sh"]
