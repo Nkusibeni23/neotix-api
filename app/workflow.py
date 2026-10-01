@@ -19,6 +19,24 @@ TRANSITIONS: dict[tuple[S, S], frozenset[Role]] = {
     (S.rejected, S.in_progress): STAFF,
 }
 
+# How statuses read in messages shown to users (same words as the UI badges).
+LABELS = {
+    S.submitted: "submitted",
+    S.in_progress: "in progress",
+    S.delivered: "delivered",
+    S.accepted: "accepted",
+    S.rejected: "rejected",
+}
+
+# The action each move stands for, e.g. "Only operators can deliver a request."
+ACTIONS = {
+    S.in_progress: "start work on a request",
+    S.delivered: "deliver a request",
+    S.accepted: "accept a delivery",
+    S.rejected: "reject a delivery",
+    S.submitted: "submit a request",
+}
+
 # Episodes can only be added or removed while an operator is working on the request.
 ASSIGNABLE_STATUSES = frozenset({S.in_progress})
 
@@ -41,11 +59,15 @@ def check_transition(
 ) -> None:
     roles = TRANSITIONS.get((current, target))
     if roles is None:
-        raise TransitionError(f"Cannot move a request from {current} to {target}")
-    if role not in roles:
-        raise TransitionError(f"Your role cannot move a request to {target}", forbidden=True)
-    if target == S.delivered and episodes_assigned < episodes_requested:
         raise TransitionError(
-            f"Request needs {episodes_requested} episodes before it can be delivered "
-            f"({episodes_assigned} assigned)"
+            f"A request that is {LABELS[current]} can't be moved to {LABELS[target]}."
+        )
+    if role not in roles:
+        who = "the client who made the request" if roles == CLIENT else "operators"
+        raise TransitionError(f"Only {who} can {ACTIONS[target]}.", forbidden=True)
+    if target == S.delivered and episodes_assigned < episodes_requested:
+        missing = episodes_requested - episodes_assigned
+        raise TransitionError(
+            f"This request needs {episodes_requested} episodes before it can be delivered; "
+            f"{episodes_assigned} assigned, {missing} to go."
         )

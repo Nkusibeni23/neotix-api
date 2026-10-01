@@ -20,7 +20,10 @@ def analytics(
     end = end or datetime.now(UTC).date()
     start = start or end - timedelta(days=29)
     if start > end:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "start must be on or before end")
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "The start date must be on or before the end date.",
+        )
     # Half-open timestamp range [start 00:00, end+1 00:00) so the indexes on timestamp columns
     # can be used directly (no function applied to the column in the WHERE clause).
     lo = datetime.combine(start, time.min, UTC)
