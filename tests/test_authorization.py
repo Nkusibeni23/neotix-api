@@ -87,3 +87,11 @@ def test_admin_cannot_lock_themselves_out(api, auth, users):
     admin_id = users["admin"].id
     res = api.patch(f"/users/{admin_id}", json={"is_active": False}, headers=auth("admin"))
     assert res.status_code == 409
+
+
+def test_any_user_can_read_task_names_but_not_episodes(api, auth, make_episode):
+    make_episode(task_name="pick cup")
+    res = api.get("/episodes/tasks", headers=auth("client_a"))
+    assert res.status_code == 200
+    assert res.json() == ["pick cup"]
+    assert api.get("/episodes", headers=auth("client_a")).status_code == 403

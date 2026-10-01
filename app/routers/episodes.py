@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 
-from app.deps import DbSession, Staff
+from app.deps import CurrentUser, DbSession, Staff
 from app.importer import RowError, import_bytes
 from app.models import Assignment, Episode, Quality
 from app.schemas import EpisodeOut, ImportReport, Page, normalise_task
@@ -45,8 +45,9 @@ def list_episodes(
 
 
 @router.get("/tasks")
-def list_tasks(_: Staff, db: DbSession) -> list[str]:
-    """Distinct task names, for filter dropdowns."""
+def list_tasks(_: CurrentUser, db: DbSession) -> list[str]:
+    """Distinct task names. Any signed-in user: clients pick from these when creating a request,
+    so their task matches the episodes operators will assign. Names only, no episode data."""
     return list(db.scalars(select(Episode.task_name).distinct().order_by(Episode.task_name)))
 
 
