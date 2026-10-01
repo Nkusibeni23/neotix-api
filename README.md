@@ -27,8 +27,15 @@ Design decisions, trade-offs and known limitations are in [NOTES.md](NOTES.md).
 
 ```
 .
-├── app/                 # application code
-├── tests/               # pytest suite
+├── app/
+│   ├── models.py        # SQLAlchemy tables
+│   ├── workflow.py      # request status machine (pure functions)
+│   ├── importer.py      # idempotent CSV import (also a CLI)
+│   ├── routers/         # auth, users, requests, episodes, analytics
+│   └── ...
+├── alembic/             # migrations
+├── scripts/start.sh     # container start: migrate, seed, import, serve
+├── tests/               # pytest suite (runs against Postgres)
 ├── seed/                # users.json, episodes.csv (messy export), large-file generator
 ├── Dockerfile
 └── docker-compose.yml   # db + api + frontend (frontend built from its own repo)
@@ -53,7 +60,37 @@ You do not need to clone the frontend: Compose fetches and builds it from its re
 | API docs (OpenAPI) | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health |
 
+On start the API container runs, in order (all idempotent, so restarts are safe):
+`alembic upgrade head` → seed users → import `seed/episodes.csv` → serve.
+
 To start again from an empty database: `docker compose down -v`.
+
+## API overview
+
+Interactive docs at http://localhost:8000/docs. All endpoints except `/auth/login` and `/health`
+need `Authorization: Bearer <token>`.
+
+| Method & path | Who | Purpose |
+|---|---|---|
+| `POST /auth/login` | anyone | Email + password → JWT |
+| `GET /auth/me` | any user | Current user |
+| `GET /requests` | client (own) / staff (all) | List, optional `?status=` |
+| `POST /requests` | client | Create a request |
+| `GET /requests/{id}` | owner / staff | Detail with status history |
+| `POST /requests/{id}/transitions` | depends on step | `{"to_status": "..."}` |
+| `GET /requests/{id}/episodes` | owner / staff | Episodes assigned to it |
+| `POST /requests/{id}/assignments` | staff | `{"episode_ids": [...]}` |
+| `DELETE /requests/{id}/assignments/{episode_id}` | staff | Unassign |
+| `GET /episodes` | staff | Filter by `task_name`, `quality` (repeatable), `robot_id`, `unassigned` |
+| `GET /episodes/tasks` | staff | Distinct task names |
+| `POST /episodes/import` | staff | Multipart CSV upload → import report |
+| `GET /analytics?start=&end=` | staff | Per-day/robot counts, fulfilment, top tasks |
+| `GET/POST /users`, `PATCH /users/{id}` | admin | Manage users and roles |
+
+"Staff" means operator or admin.
+
+Errors: `401` not logged in, `403` wrong role, `404` not found (also used for another client's
+request, so ids are not revealed), `409` breaks a domain rule, `422` invalid input.
 
 ## Seed users
 
@@ -103,17 +140,34 @@ The API reads settings from environment variables (or a local `.env` file).
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DATABASE_URL` | `postgresql+psycopg://desk:desk@localhost:5432/desk` | SQLAlchemy connection string |
-| `JWT_SECRET` | `dev-only-change-me` | Token signing key. **Must be overridden outside local dev.** |
+| `DATABASE_URL` | `postgresql+psycopg://desk:desk@localhost:5433/desk` | SQLAlchemy connection string |
+| `JWT_SECRET` | `dev-only-insecure-secret-change-me-in-production` | Token signing key. **Must be overridden outside local dev.** |
 | `JWT_EXPIRES_MINUTES` | `480` | Access-token lifetime |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed browser origins (JSON list) |
 | `LOG_LEVEL` | `INFO` | Log verbosity |
 
 ## Tests
 
+The tests need Postgres (the importer and analytics use Postgres-specific SQL). They create and
+migrate a separate `desk_test` database, so your dev data is untouched.
+
 ```bash
+docker compose up -d db   # if not already running
 uv run pytest
 ```
+
+What is covered, by file:
+
+| File | Focus |
+|---|---|
+| `test_auth.py` | login, token checks, deactivated users |
+| `test_authorization.py` | each role is blocked from what it may not do; clients isolated from each other |
+| `test_transitions.py` | every (from, to, role) combination; full lifecycle incl. rework; audit history |
+| `test_assignments.py` | quality rule, one request per episode (API and DB constraint), status rule |
+| `test_import.py` | messy seed file report, idempotency, normalisation, duplicate/conflict handling |
+| `test_analytics.py` | per-day/robot counts, top tasks, median delivery time, date range |
+
+To import any CSV from the command line: `uv run python -m app.importer path/to/file.csv`.
 
 Lint:
 
