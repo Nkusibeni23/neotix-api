@@ -145,17 +145,13 @@ the 5 million rows took about 10 minutes. The README has the details and query p
 
 ## 6. AI tooling
 
-I used **Claude Code** (Anthropic) for most of the implementation. It wrote the large majority of
-the backend, frontend and tests, ran the checks (tests, type-checking, lint, builds, the clean-clone
-Docker run and the 5-million-episode benchmark), and drafted this document and the READMEs.
+I built this with **Claude Code** (Anthropic) as my implementation tool: I described what I
+wanted, it generated the code, tests and first drafts of the docs, and I reviewed and adjusted the
+result.
 
-My part: I set the direction and made the calls. I chose the stack for the frontend (Next.js,
-Tailwind, shadcn/ui, TanStack) and asked for a clean, consistent, reusable design; I pushed the UX
-to where I wanted it (light theme only, bigger buttons, confirmation dialogs wherever an action
-can't be undone, a proper date picker, placeholders, numbered tables, better filters); I chose
-real-time as the stretch item; and I managed the repositories, branches and pull requests. I also
-caught problems by running it myself, and asked for fixes.
-
-Bugs the AI introduced were caught by its own checks: its first migration declared each CHECK
-constraint twice, and its first test helper broke the median calculation (section 3). Everything
-here is code I've read and can explain and change.
+I chose the stack, the UX (clean light theme, confirmation before irreversible actions, clear
+messages, responsive tables, filters) and real-time as the stretch item. The domain rules and the
+import policy were worked out with the tool and agreed by me; section 1 explains why each one is
+the way it is. The checks that back this up are all in the repository and can be re-run: the test
+suite, a clean-clone `docker compose up`, a 5-million-episode load test, and a check that tries
+every forbidden action against the running API.

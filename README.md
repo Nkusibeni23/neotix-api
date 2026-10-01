@@ -171,6 +171,17 @@ Why it holds up (from `EXPLAIN ANALYZE`):
   full year Postgres switches to a parallel scan of the whole table (278 ms).
 - **Fulfilment** only touches `requests` and their status events, which stay small.
 
+To reproduce (takes about 15 minutes, uses a separate database):
+
+```bash
+python3 seed/generate_episodes.py 5000000 > /tmp/ep5m.csv
+docker compose exec db createdb -U desk desk_bench
+export DATABASE_URL=postgresql+psycopg://desk:desk@localhost:5433/desk_bench
+uv run alembic upgrade head && uv run python -m app.seed
+uv run python -m app.importer /tmp/ep5m.csv
+uv run uvicorn app.main:app --port 8001   # then time requests against it
+```
+
 What would need to change next, at tens of millions of rows or many people refreshing dashboards:
 
 1. A **daily roll-up table** `(day, robot_id, task_name, quality) → count`, updated by the importer
@@ -266,6 +277,17 @@ uv run pytest            # 81 tests, about 2 seconds
 
 Lint: `uv run ruff check .`
 
+### Check the rules against the running system
+
+`scripts/check_rules.py` tries every forbidden action through the real API (another client's
+request, an operator accepting, a bad episode, double assignment, early delivery, invalid moves,
+re-import, audit trail) and prints what the server answered. It exits non-zero if any rule fails.
+
+```bash
+docker compose up -d
+python3 scripts/check_rules.py
+```
+
 ---
 
 ## Local development (without Docker for the apps)
@@ -318,6 +340,7 @@ app/
 └── routers/           # auth, users, requests, episodes, analytics, events
 alembic/               # migrations
 scripts/start.sh       # container start: migrate, seed, import, serve
+scripts/check_rules.py # tries every forbidden action against the running API
 seed/                  # provided data: users.json, messy episodes.csv, large-file generator
 tests/
 ```
