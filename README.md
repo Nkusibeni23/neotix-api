@@ -120,7 +120,8 @@ docker compose up -d db
 
 # API: http://localhost:8000
 uv sync
-uv run uvicorn app.main:app --reload
+uv run alembic upgrade head && uv run python -m app.seed && uv run python -m app.importer
+uv run uvicorn app.main:app --reload --no-access-log
 
 # frontend: http://localhost:3000 (in another terminal)
 cd ../dataset-request-desk-web
