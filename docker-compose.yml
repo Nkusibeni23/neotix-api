@@ -38,7 +38,7 @@ services:
       # The frontend lives in its own repository; Compose clones and builds it directly.
       # When working on both repos locally, point this at the sibling checkout instead:
       #   FRONTEND_CONTEXT=../dataset-request-desk-web docker compose up --build
-      context: ${FRONTEND_CONTEXT:-https://github.com/Nkusibeni23/dataset-request-desk-web.git#main}
+      context: ${FRONTEND_CONTEXT:-https://github.com/Nkusibeni23/neotix-test.git#main}
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:

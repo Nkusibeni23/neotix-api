@@ -9,7 +9,7 @@ The system is split across two repositories:
 | Repository | Contents |
 |---|---|
 | **dataset-request-desk-api** (this one) | FastAPI backend, database migrations, seed data, tests, and the `docker-compose.yml` that runs the whole system |
-| [dataset-request-desk-web](https://github.com/Nkusibeni23/dataset-request-desk-web) | Next.js frontend |
+| [neotix-test](https://github.com/Nkusibeni23/neotix-test) | Next.js frontend |
 
 Design decisions, trade-offs and known limitations are in [NOTES.md](NOTES.md).
 
@@ -46,8 +46,8 @@ Design decisions, trade-offs and known limitations are in [NOTES.md](NOTES.md).
 Requirements: Docker with Compose v2 (Docker Desktop, OrbStack or Colima) and `git`.
 
 ```bash
-git clone https://github.com/Nkusibeni23/dataset-request-desk-api.git
-cd dataset-request-desk-api
+git clone https://github.com/Nkusibeni23/neotix-api.git
+cd neotix-api
 docker compose up --build
 ```
 
