@@ -85,10 +85,14 @@ def test_full_lifecycle_with_rework_is_recorded(api, auth, make_episode):
 def test_wrong_role_gets_403_and_wrong_state_gets_409(api, auth, make_request):
     req = make_request(status=S.submitted)
     assert move(api, auth("client_a"), req.id, "in_progress").status_code == 403
-    assert move(api, auth("operator"), req.id, "delivered").status_code == 409
+    res = move(api, auth("operator"), req.id, "delivered")
+    assert res.status_code == 409
+    assert res.json()["detail"] == "A request that is submitted can't be moved to delivered."
 
     delivered = make_request(status=S.delivered)
-    assert move(api, auth("operator"), delivered.id, "accepted").status_code == 403
+    res = move(api, auth("operator"), delivered.id, "accepted")
+    assert res.status_code == 403
+    assert res.json()["detail"] == "Only the client who made the request can accept a delivery."
     assert move(api, auth("admin"), delivered.id, "accepted").status_code == 403
 
 

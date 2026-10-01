@@ -24,20 +24,33 @@ def verify_password(password: str, password_hash: str) -> bool:
 DUMMY_HASH = hash_password("not-a-real-password")
 
 
-def create_access_token(user_id: int) -> str:
+# Tokens carry a scope so a short-lived stream token (sent in a URL, see routers/events.py) can
+# never be used as a normal access token, and vice versa.
+ACCESS_SCOPE = "access"
+STREAM_SCOPE = "stream"
+STREAM_TOKEN_SECONDS = 60
+
+
+def _encode(user_id: int, scope: str, lifetime: timedelta) -> str:
     now = datetime.now(UTC)
-    payload = {
-        "sub": str(user_id),
-        "iat": now,
-        "exp": now + timedelta(minutes=settings.jwt_expires_minutes),
-    }
+    payload = {"sub": str(user_id), "scope": scope, "iat": now, "exp": now + lifetime}
     return jwt.encode(payload, settings.jwt_secret, algorithm=JWT_ALGORITHM)
 
 
-def decode_access_token(token: str) -> int | None:
-    """Returns the user id, or None if the token is invalid or expired."""
+def create_access_token(user_id: int) -> str:
+    return _encode(user_id, ACCESS_SCOPE, timedelta(minutes=settings.jwt_expires_minutes))
+
+
+def create_stream_token(user_id: int) -> str:
+    return _encode(user_id, STREAM_SCOPE, timedelta(seconds=STREAM_TOKEN_SECONDS))
+
+
+def decode_token(token: str, scope: str = ACCESS_SCOPE) -> int | None:
+    """Returns the user id, or None if the token is invalid, expired or has another scope."""
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[JWT_ALGORITHM])
+        if payload.get("scope") != scope:
+            return None
         return int(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError):
         return None

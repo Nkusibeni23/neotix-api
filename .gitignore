@@ -1,6 +1,9 @@
 .DS_Store
 .env
 .venv/
+temp_auto_push.bat
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.gitignore
+branch_structure.json

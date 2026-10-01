@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.db import engine
 from app.logging import access_log_middleware, configure_logging
-from app.routers import analytics, auth, episodes, requests, users
+from app.routers import analytics, auth, episodes, events, requests, users
 
 configure_logging()
 
@@ -34,5 +34,5 @@ def health() -> JSONResponse:
     return JSONResponse({"status": "ok", "database": "ok"})
 
 
-for r in (auth, users, requests, episodes, analytics):
+for r in (auth, users, requests, episodes, analytics, events):
     app.include_router(r.router)
