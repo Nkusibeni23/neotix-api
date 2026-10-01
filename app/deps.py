@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Role, User
-from app.security import decode_access_token
+from app.security import decode_token
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -26,7 +26,7 @@ def get_current_user(
     )
     if credentials is None:
         raise unauthorized
-    user_id = decode_access_token(credentials.credentials)
+    user_id = decode_token(credentials.credentials)
     if user_id is None:
         raise unauthorized
     # Re-read the user on every request so deactivation and role changes apply immediately,
@@ -47,7 +47,7 @@ def require_roles(*roles: Role) -> Callable[..., User]:
 
     def check(user: CurrentUser) -> User:
         if user.role not in roles:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not allowed for your role")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't have permission to do this.")
         return user
 
     return check

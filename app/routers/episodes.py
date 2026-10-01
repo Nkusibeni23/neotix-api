@@ -60,4 +60,7 @@ def import_csv(file: UploadFile, _: Staff, db: DbSession) -> ImportReport:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(e))
     except UnicodeDecodeError:
         db.rollback()
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "File is not UTF-8 text")
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "The file must be a UTF-8 CSV. Export it again as CSV (UTF-8).",
+        )

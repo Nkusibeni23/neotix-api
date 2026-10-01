@@ -35,7 +35,8 @@ def test_episode_can_only_belong_to_one_request(api, auth, make_request, make_ep
 
     res = assign(api, auth("operator"), second.id, ep)
     assert res.status_code == 409
-    assert ep.episode_id in res.json()["detail"]
+    # Readable for people: plain ids, no Python list syntax.
+    assert res.json()["detail"] == f"Already assigned to a request: {ep.episode_id}."
     # Re-assigning to the same request is also rejected, not silently ignored.
     assert assign(api, auth("operator"), first.id, ep).status_code == 409
 

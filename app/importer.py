@@ -112,7 +112,10 @@ def _valid_rows(lines: Iterable[str], result: _Result) -> Iterator[dict]:
     reader = csv.reader(lines)
     header = [h.strip().lower() for h in next(reader, [])]
     if header != COLUMNS:
-        raise RowError(f"unexpected header {header}; expected {COLUMNS}")
+        raise RowError(
+            "This doesn't look like an episodes export. The first line must be: "
+            + ", ".join(COLUMNS)
+        )
 
     # episode_id -> (line, row) of the first valid occurrence, to classify later duplicates.
     seen: dict[str, tuple[int, dict]] = {}

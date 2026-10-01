@@ -37,10 +37,12 @@ def create_user(body: UserCreate, _: Admin, db: DbSession) -> UserOut:
 def update_user(user_id: int, body: UserUpdate, admin: Admin, db: DbSession) -> UserOut:
     user = db.get(User, user_id)
     if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That user doesn't exist.")
     # Stops the last admin locking everyone out of user management.
     if user.id == admin.id and (body.is_active is False or (body.role and body.role != user.role)):
-        raise HTTPException(status.HTTP_409_CONFLICT, "You cannot deactivate or demote yourself")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "You can't deactivate yourself or change your own role."
+        )
     if body.role is not None:
         user.role = body.role
     if body.is_active is not None:

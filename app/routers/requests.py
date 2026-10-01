@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.deps import CurrentUser, DbSession, Staff, require_roles
+from app.events import request_event
 from app.models import (
     Assignment,
     DatasetRequest,
@@ -26,7 +27,13 @@ from app.schemas import (
     TransitionIn,
     UserSummary,
 )
-from app.workflow import ASSIGNABLE_STATUSES, TransitionError, allowed_next, check_transition
+from app.workflow import (
+    ASSIGNABLE_STATUSES,
+    LABELS,
+    TransitionError,
+    allowed_next,
+    check_transition,
+)
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -62,7 +69,9 @@ def _load(db: Session, request_id: int, user: User, *, lock: bool = False) -> Da
     API does not reveal which ids exist."""
     req = db.get(DatasetRequest, request_id, with_for_update=lock)
     if req is None or (user.role == Role.client and req.client_id != user.id):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "This request doesn't exist or you don't have access to it."
+        )
     return req
 
 
@@ -112,6 +121,7 @@ def create_request(body: RequestCreate, user: Client, db: DbSession) -> RequestD
         )
     )
     db.commit()
+    request_event("created", req, user.id)
     return _detail(db, req, user)
 
 
@@ -147,6 +157,7 @@ def transition(
     )
     req.status = body.to_status
     db.commit()
+    request_event("updated", req, user.id)
     return _detail(db, req, user)
 
 
@@ -170,23 +181,28 @@ def assign_episodes(request_id: int, body: AssignIn, user: Staff, db: DbSession)
     if req.status not in ASSIGNABLE_STATUSES:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Episodes can only be assigned while in progress (now {req.status})",
+            "Episodes can only be added while the request is in progress "
+            f"(it is {LABELS[req.status]}).",
         )
 
     ids = set(body.episode_ids)
     episodes = {e.id: e for e in db.scalars(select(Episode).where(Episode.id.in_(ids)))}
     if missing := sorted(ids - episodes.keys()):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown episode ids: {missing}")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"These episodes no longer exist: {', '.join(map(str, missing))}.",
+        )
     if bad := sorted(e.episode_id for e in episodes.values() if e.quality == Quality.bad):
         raise HTTPException(
-            status.HTTP_409_CONFLICT, f"Only good or usable episodes can be assigned: {bad}"
+            status.HTTP_409_CONFLICT,
+            f"Only good or usable episodes can be assigned. Not allowed: {', '.join(bad)}.",
         )
     taken = db.scalars(
         select(Episode.episode_id).join(Assignment).where(Assignment.episode_id.in_(ids))
     ).all()
     if taken:
         raise HTTPException(
-            status.HTTP_409_CONFLICT, f"Already assigned to a request: {sorted(taken)}"
+            status.HTTP_409_CONFLICT, f"Already assigned to a request: {', '.join(sorted(taken))}."
         )
 
     db.add_all(Assignment(episode_id=i, request_id=req.id, assigned_by_id=user.id) for i in ids)
@@ -197,8 +213,10 @@ def assign_episodes(request_id: int, body: AssignIn, user: Staff, db: DbSession)
         # the primary key on assignments.episode_id caught it.
         db.rollback()
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "One or more episodes were just assigned elsewhere"
+            status.HTTP_409_CONFLICT,
+            "Someone just assigned one of these episodes. Refresh the list and try again.",
         )
+    request_event("updated", req, user.id)
     return _detail(db, req, user)
 
 
@@ -208,10 +226,12 @@ def unassign_episode(request_id: int, episode_id: int, user: Staff, db: DbSessio
     if req.status not in ASSIGNABLE_STATUSES:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Episodes can only be removed while in progress (now {req.status})",
+            "Episodes can only be removed while the request is in progress "
+            f"(it is {LABELS[req.status]}).",
         )
     assignment = db.get(Assignment, episode_id)
     if assignment is None or assignment.request_id != req.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Episode is not assigned to this request")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That episode isn't on this request.")
     db.delete(assignment)
     db.commit()
+    request_event("updated", req, user.id)
