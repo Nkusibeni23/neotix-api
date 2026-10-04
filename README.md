@@ -286,6 +286,10 @@ uv run pytest            # 81 tests, about 2 seconds
 
 Lint: `uv run ruff check .`
 
+**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs lint, the full test suite against a
+PostgreSQL service, and a Docker build of the API on every push and pull request. The frontend
+repository has its own workflow (lint, type-check, build).
+
 ### Check the rules against the running system
 
 `scripts/check_rules.py` tries every forbidden action through the real API (another client's
