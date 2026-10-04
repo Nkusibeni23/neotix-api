@@ -160,7 +160,7 @@ With 10 times more users:
 
 ## 6. AI tooling
 
-I used Claude Code (Anthropic). I told it what I wanted, it wrote the code, the tests and the
+I used Claude Code (Anthropic). I told it what I wanted, i wrote the code, the tests and the
 first version of the docs, and I checked the result and asked for changes.
 
 I chose the stack, how the app should look and behave, and real-time as the stretch item. The
