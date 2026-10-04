@@ -53,6 +53,15 @@ one-click buttons for these accounts.
 | client (Acme Robotics) | `client-a@example.com` | `client123` |
 | client (Beta Labs) | `client-b@example.com` | `client123` |
 
+### Example data (optional)
+
+A fresh start has users and episodes but no requests. To add seven example requests covering
+every status (created through the API as the seed users, so rules and history apply):
+
+```bash
+python3 scripts/demo_data.py
+```
+
 ### Two-minute walkthrough
 
 1. Sign in as **Client A** → **New request** → pick *pick cup*, 3 episodes, a deadline → submit.
@@ -341,6 +350,7 @@ app/
 alembic/               # migrations
 scripts/start.sh       # container start: migrate, seed, import, serve
 scripts/check_rules.py # tries every forbidden action against the running API
+scripts/demo_data.py   # adds example requests in every status through the API
 seed/                  # provided data: users.json, messy episodes.csv, large-file generator
 tests/
 ```
